@@ -1,0 +1,143 @@
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ModeToggle } from "./mode-toggle";
+import {
+  BookOpen,
+  LayoutDashboard,
+  Users,
+  Search,
+  FileText,
+  GraduationCap,
+} from "lucide-react";
+
+export function AppSidebar() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  if (!user) return null;
+
+  const getNavItems = () => {
+    if (user.role === "teacher") {
+      return [
+        { name: "Dashboard", path: "/teacher", icon: LayoutDashboard },
+        { name: "My Courses", path: "/my-courses", icon: BookOpen },
+        { name: "Students", path: "/teacher/students", icon: Users },
+      ];
+    }
+    if (user.role === "student") {
+      return [
+        { name: "Dashboard", path: "/student", icon: LayoutDashboard },
+        { name: "My Courses", path: "/student/courses", icon: BookOpen },
+        { name: "Browse", path: "/student/browse", icon: Search },
+      ];
+    }
+    if (user.role === "admin") {
+      return [
+        { name: "Dashboard", path: "/admin", icon: LayoutDashboard },
+        { name: "Users", path: "/admin/users", icon: Users },
+        { name: "Courses", path: "/admin/courses", icon: BookOpen },
+        { name: "Reports", path: "/admin/reports", icon: FileText },
+      ];
+    }
+    return [];
+  };
+
+  const navItems = getNavItems();
+
+  return (
+    <Sidebar>
+      <SidebarHeader>
+        <div className="flex items-center gap-2 px-2 py-4">
+          <div className="p-2 rounded-lg bg-primary">
+            <GraduationCap className="w-5 h-5 text-primary-foreground" />
+          </div>
+          <span className="font-semibold text-lg">E-Learning</span>
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navItems.map((item) => (
+                <SidebarMenuItem key={item.path}>
+                  <SidebarMenuButton
+                    onClick={() => navigate(item.path)}
+                    isActive={location.pathname === item.path}
+                  >
+                    <item.icon className="w-4 h-4" />
+                    <span>{item.name}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton>
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback>
+                      {user.name?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm font-medium">{user.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {user.role}
+                    </span>
+                  </div>
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="right" className="w-56">
+                <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/profile")}>
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/settings")}>
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-red-600 focus:text-red-600"
+                  onClick={() => logout()}
+                >
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}

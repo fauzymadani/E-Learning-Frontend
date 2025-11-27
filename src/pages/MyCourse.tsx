@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
   BookOpen,
@@ -59,12 +60,32 @@ interface CreateCourseForm {
   thumbnail: string;
 }
 
+// API Functions
+async function fetchMyCourses(): Promise<Course[]> {
+  const { data } = await axios.get("/users/taught-courses");
+  return data.courses || [];
+}
+
+async function createCourse(formData: CreateCourseForm) {
+  const { data } = await axios.post("/courses", formData);
+  return data;
+}
+
+async function deleteCourse(courseId: number) {
+  const { data } = await axios.delete(`/courses/${courseId}`);
+  return data;
+}
+
+async function togglePublish(courseId: number, currentStatus: boolean) {
+  const { data } = await axios.put(`/courses/${courseId}/publish`, {
+    is_published: !currentStatus,
+  });
+  return data;
+}
+
 export default function MyCourses() {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<CreateCourseForm>({
     title: "",
     description: "",
@@ -72,41 +93,18 @@ export default function MyCourses() {
     thumbnail: "",
   });
 
-  useEffect(() => {
-    fetchMyCourses();
-  }, []);
+  // Fetch courses with React Query
+  const { data: courses = [], isLoading, error } = useQuery({
+    queryKey: ["myCourses"],
+    queryFn: fetchMyCourses,
+    staleTime: 5 * 60 * 1000, // Cache 5 minutes
+  });
 
-  async function fetchMyCourses() {
-    try {
-      const res = await axios.get("/users/taught-courses");
-      console.log("Response:", res.data);
-
-      // Backend return { courses: [...], page, limit, total }
-      if (res.data && res.data.courses) {
-        setCourses(res.data.courses);
-      } else {
-        setCourses([]);
-      }
-    } catch (err: any) {
-      console.error("Fetch error:", err);
-      console.error("Error data:", err.response?.data);
-
-      setError(
-        err.response?.data?.error ||
-          err.response?.data?.message ||
-          "Failed to load courses"
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleCreateCourse() {
-    setIsSubmitting(true);
-    setError("");
-
-    try {
-      await axios.post("/courses", formData);
+  // Create course mutation
+  const createMutation = useMutation({
+    mutationFn: createCourse,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["myCourses"] });
       setIsDialogOpen(false);
       setFormData({
         title: "",
@@ -114,40 +112,42 @@ export default function MyCourses() {
         category: "",
         thumbnail: "",
       });
-      fetchMyCourses();
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to create course");
-    } finally {
-      setIsSubmitting(false);
-    }
+    },
+  });
+
+  // Delete course mutation
+  const deleteMutation = useMutation({
+    mutationFn: deleteCourse,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["myCourses"] });
+    },
+  });
+
+  // Toggle publish mutation
+  const publishMutation = useMutation({
+    mutationFn: ({ courseId, currentStatus }: { courseId: number; currentStatus: boolean }) =>
+      togglePublish(courseId, currentStatus),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["myCourses"] });
+    },
+  });
+
+  function handleCreateCourse() {
+    createMutation.mutate(formData);
   }
 
-  async function handleDeleteCourse(courseId: number) {
+  function handleDeleteCourse(courseId: number) {
     if (!confirm("Are you sure you want to delete this course?")) return;
-
-    try {
-      await axios.delete(`/courses/${courseId}`);
-      fetchMyCourses();
-    } catch (err: any) {
-      alert(err.response?.data?.error || "Failed to delete course");
-    }
+    deleteMutation.mutate(courseId);
   }
 
-  async function handleTogglePublish(courseId: number, currentStatus: boolean) {
-    try {
-      await axios.put(`/courses/${courseId}/publish`, {
-        is_published: !currentStatus,
-      });
-      fetchMyCourses();
-    } catch (err: any) {
-      alert(err.response?.data?.error || "Failed to update course");
-    }
+  function handleTogglePublish(courseId: number, currentStatus: boolean) {
+    publishMutation.mutate({ courseId, currentStatus });
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <>
-        <Navbar />
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="flex items-center gap-3">
             <svg
@@ -180,7 +180,6 @@ export default function MyCourses() {
 
   return (
     <>
-      <Navbar />
       <div className="min-h-screen bg-background">
         <div className="border-b bg-card">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -275,8 +274,12 @@ export default function MyCourses() {
                         }
                       />
                     </div>
-                    {error && (
-                      <p className="text-sm text-destructive">{error}</p>
+                    {createMutation.error && (
+                      <p className="text-sm text-destructive">
+                        {createMutation.error instanceof Error
+                          ? createMutation.error.message
+                          : "Failed to create course"}
+                      </p>
                     )}
                   </div>
                   <DialogFooter>
@@ -289,9 +292,9 @@ export default function MyCourses() {
                     </Button>
                     <Button
                       onClick={handleCreateCourse}
-                      disabled={isSubmitting}
+                      disabled={createMutation.isPending}
                     >
-                      {isSubmitting ? "Creating..." : "Create Course"}
+                      {createMutation.isPending ? "Creating..." : "Create Course"}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -304,7 +307,9 @@ export default function MyCourses() {
           {error && (
             <Card className="mb-6 border-destructive">
               <CardContent className="pt-6">
-                <p className="text-destructive font-medium">{error}</p>
+                <p className="text-destructive font-medium">
+                  {error instanceof Error ? error.message : "Failed to load courses"}
+                </p>
               </CardContent>
             </Card>
           )}
@@ -374,7 +379,7 @@ export default function MyCourses() {
                           <FileText className="h-4 w-4 text-muted-foreground" />
                         </div>
                         <p className="text-sm font-medium">
-                          {course.total_lessons}
+                          {course.total_lessons || 0}
                         </p>
                         <p className="text-xs text-muted-foreground">Lessons</p>
                       </div>
@@ -383,7 +388,7 @@ export default function MyCourses() {
                           <Users className="h-4 w-4 text-muted-foreground" />
                         </div>
                         <p className="text-sm font-medium">
-                          {course.total_students}
+                          {course.total_students || 0}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           Students
@@ -394,7 +399,7 @@ export default function MyCourses() {
                           <Eye className="h-4 w-4 text-muted-foreground" />
                         </div>
                         <p className="text-sm font-medium">
-                          {course.active_students}
+                          {course.active_students || 0}
                         </p>
                         <p className="text-xs text-muted-foreground">Active</p>
                       </div>
@@ -408,6 +413,7 @@ export default function MyCourses() {
                         onClick={() =>
                           handleTogglePublish(course.id, course.is_published)
                         }
+                        disabled={publishMutation.isPending}
                       >
                         {course.is_published ? "Unpublish" : "Publish"}
                       </Button>
@@ -418,6 +424,7 @@ export default function MyCourses() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleDeleteCourse(course.id)}
+                        disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
