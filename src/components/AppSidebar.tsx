@@ -30,6 +30,8 @@ import {
   Search,
   FileText,
   GraduationCap,
+  Bell,
+  Settings,
 } from "lucide-react";
 
 export function AppSidebar() {
@@ -45,6 +47,8 @@ export function AppSidebar() {
         { name: "Dashboard", path: "/teacher", icon: LayoutDashboard },
         { name: "My Courses", path: "/my-courses", icon: BookOpen },
         { name: "Students", path: "/teacher/students", icon: Users },
+        { name: "Notifications", path: "/notifications", icon: Bell },
+        { name: "Settings", path: "/settings", icon: Settings },
       ];
     }
     if (user.role === "student") {

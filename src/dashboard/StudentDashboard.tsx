@@ -53,7 +53,6 @@ export default function StudentDashboard() {
   if (loading) {
     return (
       <>
-        <Navbar />
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="flex items-center gap-3">
             <svg className="animate-spin h-8 w-8 text-muted-foreground" fill="none" viewBox="0 0 24 24">
@@ -70,7 +69,6 @@ export default function StudentDashboard() {
   if (error) {
     return (
       <>
-        <Navbar />
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
           <Card className="max-w-md border-destructive">
             <CardContent className="pt-6">
@@ -121,7 +119,6 @@ export default function StudentDashboard() {
 
   return (
     <>
-      <Navbar />
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between space-y-2">
           <div>
