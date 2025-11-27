@@ -348,7 +348,7 @@ export default function TeacherDashboard() {
               <div className="space-y-8">
                 {data.my_courses.slice(0, 3).map((course) => (
                   <div key={course.id} className="flex items-center">
-                    <div className="relative h-16 w-24 rounded-md overflow-hidden bg-muted mr-4 flex-shrink-0">
+                    <div className="relative h-16 w-24 rounded-md overflow-hidden bg-muted mr-4 shrink-0">
                       <img
                         src={course.thumbnail}
                         alt={course.title}
@@ -420,7 +420,7 @@ export default function TeacherDashboard() {
                     key={enrollment.id}
                     className="flex items-start gap-4"
                   >
-                    <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                    <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center shrink-0">
                       <span className="text-sm font-medium">
                         {enrollment.student_name.charAt(0).toUpperCase()}
                       </span>

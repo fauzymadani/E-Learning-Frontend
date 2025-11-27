@@ -15,7 +15,6 @@ import {
   ChevronLeft,
   BookOpen,
   Clock,
-  GraduationCap,
   CheckCircle,
   PlayCircle,
 } from "lucide-react";
@@ -237,7 +236,7 @@ export default function CourseDetail() {
                       No lessons available yet
                     </p>
                   ) : (
-                    lessons.slice(0, 5).map((lesson, idx) => (
+                    lessons.slice(0, 5).map((lesson) => (
                       <div key={lesson.id} className="flex items-start gap-3">
                         <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
                         <div className="flex-1">
@@ -302,7 +301,7 @@ export default function CourseDetail() {
                         key={lesson.id}
                         className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
                       >
-                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
+                        <div className="shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
                           {idx + 1}
                         </div>
                         <div className="flex-1 min-w-0">

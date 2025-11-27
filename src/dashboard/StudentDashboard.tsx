@@ -261,7 +261,7 @@ export default function StudentDashboard() {
                     {inProgressCourses.slice(0, 3).map((course) => (
                       <div key={course.id} className="space-y-3">
                         <div className="flex items-start gap-4">
-                          <div className="relative h-16 w-24 rounded-md overflow-hidden bg-muted flex-shrink-0">
+                          <div className="relative h-16 w-24 rounded-md overflow-hidden bg-muted shrink-0">
                             <img
                               src={course.thumbnail}
                               alt={course.title}
@@ -349,7 +349,7 @@ export default function StudentDashboard() {
                           key={course.id}
                           className="flex items-center gap-4 pb-4 border-b last:border-0"
                         >
-                          <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                          <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center shrink-0">
                             <BookOpen className="h-5 w-5" />
                           </div>
                           <div className="flex-1 space-y-1">

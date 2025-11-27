@@ -23,7 +23,6 @@ import {
   Circle,
   ChevronLeft,
   ChevronRight,
-  BookOpen,
   Clock,
   FileText,
   PartyPopper,
@@ -455,7 +454,7 @@ export default function StudentCourseLesson() {
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-1">
+                        <div className="shrink-0 mt-1">
                           {lesson.is_completed ? (
                             <CheckCircle className="h-5 w-5 text-green-500" />
                           ) : (
