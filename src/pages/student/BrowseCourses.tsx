@@ -1,6 +1,10 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCourses, useMyEnrollments, useEnrollMutation } from "../../api/queries";
+import {
+  useCourses,
+  useMyEnrollments,
+  useEnrollMutation,
+} from "../../api/queries";
 import {
   Card,
   CardContent,
@@ -45,6 +49,8 @@ interface Course {
   is_published: boolean;
   total_lessons?: number;
   is_enrolled?: boolean;
+  progress_percentage?: number;
+  is_completed?: boolean;
 }
 
 export default function BrowseCourses() {
@@ -56,7 +62,8 @@ export default function BrowseCourses() {
 
   // React Query hooks
   const { data: coursesData, isLoading: coursesLoading } = useCourses();
-  const { data: enrollmentsData, isLoading: enrollmentsLoading } = useMyEnrollments();
+  const { data: enrollmentsData, isLoading: enrollmentsLoading } =
+    useMyEnrollments();
   const enrollMutation = useEnrollMutation();
 
   const isLoading = coursesLoading || enrollmentsLoading;
@@ -64,14 +71,27 @@ export default function BrowseCourses() {
   // Process courses with enrollment status
   const courses: Course[] = useMemo(() => {
     if (!coursesData) return [];
-    
-    const publishedCourses = (coursesData as Course[]).filter((c) => c.is_published);
-    const enrolledIds = enrollmentsData?.map((e: any) => e.course_id) || [];
-    
-    return publishedCourses.map((course) => ({
-      ...course,
-      is_enrolled: enrolledIds.includes(course.id),
-    }));
+
+    const publishedCourses = (coursesData as Course[]).filter(
+      (c) => c.is_published
+    );
+
+    return publishedCourses.map((course) => {
+      const enrollment = enrollmentsData?.find(
+        (e: any) => e.course_id === course.id
+      );
+      // Use status field from enrollment (completed, active, etc.)
+      const progressPercentage = enrollment?.progress_percentage || 0;
+      const enrollmentStatus = enrollment?.status || "";
+
+      return {
+        ...course,
+        is_enrolled: !!enrollment,
+        progress_percentage: progressPercentage,
+        is_completed:
+          enrollmentStatus === "completed" || progressPercentage === 100,
+      };
+    });
   }, [coursesData, enrollmentsData]);
 
   // Filter courses
@@ -83,7 +103,9 @@ export default function BrowseCourses() {
       filtered = filtered.filter(
         (course) =>
           course.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          course.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          course.description
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
           course.teacher_name?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
@@ -182,9 +204,7 @@ export default function BrowseCourses() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Courses
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Total Courses</CardTitle>
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -292,6 +312,24 @@ export default function BrowseCourses() {
                       </span>
                     </div>
                   )}
+                  {course.is_enrolled &&
+                    course.progress_percentage !== undefined &&
+                    !course.is_completed && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">
+                          {course.progress_percentage}% Complete
+                        </span>
+                      </div>
+                    )}
+                  {course.is_enrolled && course.is_completed && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span className="text-green-600 font-medium">
+                        Completed
+                      </span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
 
@@ -304,7 +342,11 @@ export default function BrowseCourses() {
                         navigate(`/student/courses/${course.id}/learn`)
                       }
                     >
-                      Continue Learning
+                      {course.is_completed
+                        ? "Review Course"
+                        : course.progress_percentage === 0
+                        ? "Start Learning"
+                        : "Continue Learning"}
                     </Button>
                     <Button
                       variant="outline"

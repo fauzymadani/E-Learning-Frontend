@@ -63,6 +63,10 @@ export default function StudentDashboard() {
         const progress = progressList.find((p: any) => p.course_id === c.id);
 
         const progressPercent = progress?.progress_percent || 0;
+        // Check both enrollment status and progress percentage
+        const enrollmentStatus = c.status || "";
+        const isCompleted =
+          enrollmentStatus === "completed" || progressPercent === 100;
 
         return {
           id: c.id,
@@ -73,12 +77,11 @@ export default function StudentDashboard() {
           total_lessons: progress?.total_lessons ?? c.total_lessons,
           completed_lessons: progress?.completed_lessons ?? c.completed_lessons,
           last_accessed: progress?.last_accessed_at,
-          status:
-            progressPercent === 0
-              ? "not_started"
-              : progressPercent === 100
-              ? "completed"
-              : "in_progress",
+          status: isCompleted
+            ? "completed"
+            : progressPercent === 0
+            ? "not_started"
+            : "in_progress",
         };
       });
 
@@ -284,17 +287,19 @@ export default function StudentDashboard() {
                             </div>
                           </div>
                         </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">
-                              Progress
-                            </span>
-                            <span className="font-medium">
-                              {course.progress}%
-                            </span>
+                        {course.status !== "completed" && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">
+                                Progress
+                              </span>
+                              <span className="font-medium">
+                                {course.progress}%
+                              </span>
+                            </div>
+                            <Progress value={course.progress} className="h-2" />
                           </div>
-                          <Progress value={course.progress} className="h-2" />
-                        </div>
+                        )}
                         <Button
                           size="sm"
                           className="w-full"
@@ -302,7 +307,11 @@ export default function StudentDashboard() {
                             navigate(`/student/courses/${course.id}/learn`)
                           }
                         >
-                          Continue Learning
+                          {course.status === "completed"
+                            ? "Review Course"
+                            : course.status === "not_started"
+                            ? "Start Learning"
+                            : "Continue Learning"}
                         </Button>
                       </div>
                     ))}
@@ -393,9 +402,7 @@ export default function StudentDashboard() {
                   />
                 </div>
                 <CardHeader>
-                  <CardTitle className="line-clamp-1">
-                    {course.title}
-                  </CardTitle>
+                  <CardTitle className="line-clamp-1">{course.title}</CardTitle>
                   <CardDescription>
                     <Badge variant="outline">{course.category}</Badge>
                   </CardDescription>
@@ -445,9 +452,7 @@ export default function StudentDashboard() {
                   </div>
                 </div>
                 <CardHeader>
-                  <CardTitle className="line-clamp-1">
-                    {course.title}
-                  </CardTitle>
+                  <CardTitle className="line-clamp-1">{course.title}</CardTitle>
                   <CardDescription>
                     <Badge variant="outline">{course.category}</Badge>
                   </CardDescription>
