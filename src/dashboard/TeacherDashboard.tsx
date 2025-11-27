@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { BookOpen, Users, CheckCircle, FileText, TrendingUp, Clock } from "lucide-react";
 import axios from "../api/axios";
 import Navbar from "../components/Navbar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Course {
   id: number;
@@ -98,165 +100,245 @@ export default function TeacherDashboard() {
     {
       title: "Total Courses",
       value: data.stats.total_courses,
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-        </svg>
-      ),
-    },
-    {
-      title: "Published",
-      value: data.stats.published_courses,
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
+      description: `${data.stats.published_courses} published`,
+      icon: BookOpen,
+      trend: "+2 from last month",
     },
     {
       title: "Total Students",
       value: data.stats.total_students,
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-      ),
+      description: "Across all courses",
+      icon: Users,
+      trend: "+12% from last month",
+    },
+    {
+      title: "Published Courses",
+      value: data.stats.published_courses,
+      description: `${data.stats.total_courses - data.stats.published_courses} drafts`,
+      icon: CheckCircle,
+      trend: "Ready for students",
     },
     {
       title: "Total Lessons",
       value: data.stats.total_lessons,
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-        </svg>
-      ),
+      description: "Content created",
+      icon: FileText,
+      trend: `Avg ${Math.round(data.stats.total_lessons / (data.stats.total_courses || 1))} per course`,
     },
   ];
 
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-background">
-        <div className="border-b bg-card">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <h1 className="text-3xl font-bold tracking-tight">Teacher Dashboard</h1>
-            <p className="text-muted-foreground mt-2">Manage your courses and students</p>
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex items-center justify-between space-y-2">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+            <p className="text-muted-foreground">
+              Overview of your teaching activity
+            </p>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Stats Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-            {statCards.map((stat, idx) => (
-              <Card key={idx}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                  <div className="text-muted-foreground">{stat.icon}</div>
+        <Tabs defaultValue="overview" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="students">Students</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {statCards.map((stat, idx) => (
+                <Card key={idx}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      {stat.title}
+                    </CardTitle>
+                    <stat.icon className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stat.value}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {stat.description}
+                    </p>
+                    <div className="flex items-center pt-1">
+                      <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
+                      <span className="text-xs text-muted-foreground">
+                        {stat.trend}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+              <Card className="col-span-4">
+                <CardHeader>
+                  <CardTitle>My Courses</CardTitle>
+                  <CardDescription>
+                    Your recent course activity
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* My Courses */}
-            <Card>
-              <CardHeader>
-                <CardTitle>My Courses</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {data.my_courses.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No courses yet</p>
-                ) : (
-                  <div className="space-y-4">
-                    {data.my_courses.map((course) => (
-                      <div key={course.id}>
-                        <div className="flex items-start gap-4">
-                          <img
-                            src={course.thumbnail}
-                            alt={course.title}
-                            className="w-20 h-20 rounded-md object-cover bg-muted"
-                            onError={(e) => {
-                              e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Crect fill='%23e5e7eb' width='80' height='80'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%239ca3af' font-size='12'%3ENo Image%3C/text%3E%3C/svg%3E";
-                            }}
-                          />
+                  {data.my_courses.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <BookOpen className="h-12 w-12 text-muted-foreground mb-2" />
+                      <p className="text-muted-foreground">No courses yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-8">
+                      {data.my_courses.slice(0, 3).map((course) => (
+                        <div key={course.id} className="flex items-center">
+                          <div className="relative h-16 w-24 rounded-md overflow-hidden bg-muted mr-4 flex-shrink-0">
+                            <img
+                              src={course.thumbnail}
+                              alt={course.title}
+                              className="h-full w-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='64'%3E%3Crect fill='%23e5e7eb' width='96' height='64'/%3E%3C/svg%3E";
+                              }}
+                            />
+                          </div>
                           <div className="flex-1 space-y-1">
-                            <div className="flex items-start justify-between">
-                              <h3 className="font-semibold leading-none">{course.title}</h3>
-                              <Badge variant={course.is_published ? "default" : "secondary"}>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium leading-none">
+                                {course.title}
+                              </p>
+                              <Badge variant={course.is_published ? "default" : "secondary"} className="h-5">
                                 {course.is_published ? "Published" : "Draft"}
                               </Badge>
                             </div>
-                            <div className="grid grid-cols-3 gap-4 pt-2">
-                              <div>
-                                <p className="text-xs text-muted-foreground">Lessons</p>
-                                <p className="text-sm font-medium">{course.total_lessons}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground">Students</p>
-                                <p className="text-sm font-medium">{course.total_students}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground">Active</p>
-                                <p className="text-sm font-medium">{course.active_students}</p>
-                              </div>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <FileText className="h-3 w-3" />
+                                {course.total_lessons} lessons
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                {course.total_students} students
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right ml-4">
+                            <div className="text-sm font-medium">
+                              {course.active_students}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Active
                             </div>
                           </div>
                         </div>
-                        {course.id !== data.my_courses[data.my_courses.length - 1].id && (
-                          <Separator className="mt-4" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-            {/* Recent Enrollments */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Enrollments</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {data.recent_enrollments.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No recent enrollments</p>
-                ) : (
-                  <div className="space-y-4">
-                    {data.recent_enrollments.map((enrollment) => (
-                      <div key={enrollment.id}>
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="space-y-1">
-                            <h3 className="font-semibold leading-none">{enrollment.student_name}</h3>
-                            <p className="text-sm text-muted-foreground">{enrollment.student_email}</p>
+              <Card className="col-span-3">
+                <CardHeader>
+                  <CardTitle>Recent Enrollments</CardTitle>
+                  <CardDescription>
+                    Latest student activity
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {data.recent_enrollments.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <Clock className="h-12 w-12 text-muted-foreground mb-2" />
+                      <p className="text-muted-foreground text-sm">
+                        No recent enrollments
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {data.recent_enrollments.slice(0, 5).map((enrollment) => (
+                        <div key={enrollment.id} className="flex items-start gap-4">
+                          <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                            <span className="text-sm font-medium">
+                              {enrollment.student_name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <p className="text-sm font-medium leading-none">
+                              {enrollment.student_name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {enrollment.course_name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(enrollment.enrolled_at).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </p>
                           </div>
                           <Badge variant={enrollment.status === "active" ? "default" : "secondary"}>
                             {enrollment.status}
                           </Badge>
                         </div>
-                        <p className="text-sm font-medium">{enrollment.course_name}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(enrollment.enrolled_at).toLocaleDateString("en-US", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                        {enrollment.id !== data.recent_enrollments[data.recent_enrollments.length - 1].id && (
-                          <Separator className="mt-4" />
-                        )}
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Analytics</CardTitle>
+                <CardDescription>Coming soon - Detailed course analytics</CardDescription>
+              </CardHeader>
+              <CardContent className="h-[400px] flex items-center justify-center">
+                <p className="text-muted-foreground">Analytics dashboard under development</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="students" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>All Students</CardTitle>
+                <CardDescription>Manage your students across all courses</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {data.recent_enrollments.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <Users className="h-12 w-12 text-muted-foreground mb-2" />
+                    <p className="text-muted-foreground">No students enrolled yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {data.recent_enrollments.map((enrollment) => (
+                      <div key={enrollment.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-4">
+                          <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center">
+                            <span className="text-sm font-medium">
+                              {enrollment.student_name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{enrollment.student_name}</p>
+                            <p className="text-xs text-muted-foreground">{enrollment.student_email}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium">{enrollment.course_name}</p>
+                          <Badge variant={enrollment.status === "active" ? "default" : "secondary"} className="mt-1">
+                            {enrollment.status}
+                          </Badge>
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
               </CardContent>
             </Card>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </>
   );

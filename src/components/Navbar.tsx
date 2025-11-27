@@ -31,7 +31,7 @@ export default function Navbar() {
     user.role === "teacher"
       ? [
           { name: "Dashboard", path: "/teacher" },
-          { name: "My Courses", path: "/teacher/courses" },
+          { name: "My Courses", path: "/my-courses" }, // ← UBAH INI
           { name: "Students", path: "/teacher/students" },
         ]
       : user.role === "student"
@@ -52,7 +52,7 @@ export default function Navbar() {
   const isActive = (p: string) => location.pathname === p;
 
   return (
-    <nav className="w-full border-b bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+    <nav className="w-full border-b bg-card/80 backdrop-blur supports-backdrop-filter:bg-card/60">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo / Brand */}
         <div
@@ -85,7 +85,7 @@ export default function Navbar() {
             {navItems.map((item) => (
               <NavigationMenuItem key={item.path}>
                 <NavigationMenuLink
-                  className={`px-4 py-2 rounded-md text-sm transition ${
+                  className={`px-4 py-2 rounded-md text-sm transition cursor-pointer ${
                     isActive(item.path)
                       ? "bg-secondary text-secondary-foreground"
                       : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
@@ -99,45 +99,48 @@ export default function Navbar() {
           </NavigationMenuList>
         </NavigationMenu>
 
-        {/* User Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger className="outline-none">
-            <div className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-secondary text-muted-foreground transition">
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-secondary text-secondary-foreground">
-                  {user.name?.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="hidden sm:block text-left leading-tight">
-                <p className="text-sm text-foreground">{user.name}</p>
-                <p className="text-xs text-muted-foreground">{user.role}</p>
+        {/* Right Side: Mode Toggle + User Menu */}
+        <div className="flex items-center gap-2">
+          <ModeToggle />
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger className="outline-none">
+              <div className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-secondary text-muted-foreground transition">
+                <Avatar className="h-9 w-9">
+                  <AvatarFallback className="bg-secondary text-secondary-foreground">
+                    {user.name?.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="hidden sm:block text-left leading-tight">
+                  <p className="text-sm text-foreground">{user.name}</p>
+                  <p className="text-xs text-muted-foreground">{user.role}</p>
+                </div>
               </div>
-            </div>
-          </DropdownMenuTrigger>
+            </DropdownMenuTrigger>
 
-          <DropdownMenuContent className="w-56" align="end">
-            <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
+            <DropdownMenuContent className="w-56" align="end">
+              <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
 
-            <DropdownMenuItem onClick={() => navigate("/profile")}>
-              Profile
-            </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/profile")}>
+                Profile
+              </DropdownMenuItem>
 
-            <DropdownMenuItem onClick={() => navigate("/settings")}>
-              Settings
-            </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/settings")}>
+                Settings
+              </DropdownMenuItem>
 
-            <DropdownMenuSeparator />
+              <DropdownMenuSeparator />
 
-            <DropdownMenuItem
-              className="text-red-600 focus:text-red-600"
-              onClick={() => logout()}
-            >
-              Logout
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <ModeToggle />
+              <DropdownMenuItem
+                className="text-red-600 focus:text-red-600"
+                onClick={() => logout()}
+              >
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Mobile Navigation */}
