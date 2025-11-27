@@ -168,92 +168,110 @@ export default function BrowseCourses() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Browse Courses</h2>
-        <p className="text-muted-foreground">
-          Discover and enroll in courses to start learning
+    <div className="space-y-8">
+      {/* Header Section */}
+      <div className="space-y-1">
+        <h1 className="text-4xl font-bold tracking-tight">Explore Courses</h1>
+        <p className="text-lg text-muted-foreground">
+          Discover new skills and advance your learning journey
         </p>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search courses..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Courses</SelectItem>
-            <SelectItem value="enrolled">Enrolled</SelectItem>
-            <SelectItem value="not-enrolled">Not Enrolled</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Search and Filter Bar */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by course title or instructor..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-11"
+              />
+            </div>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-full sm:w-[180px] h-11">
+                <SelectValue placeholder="Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Courses</SelectItem>
+                <SelectItem value="enrolled">My Courses</SelectItem>
+                <SelectItem value="not-enrolled">Available</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Courses</CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{courses.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Enrolled</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+      {/* Quick Stats */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="flex items-center gap-4 rounded-lg border bg-card p-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <BookOpen className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Total</p>
+            <p className="text-2xl font-bold">{courses.length}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 rounded-lg border bg-card p-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10">
+            <CheckCircle className="h-6 w-6 text-green-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">
+              Enrolled
+            </p>
+            <p className="text-2xl font-bold">
               {courses.filter((c) => c.is_enrolled).length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Available</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 rounded-lg border bg-card p-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10">
+            <Clock className="h-6 w-6 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">
+              Available
+            </p>
+            <p className="text-2xl font-bold">
               {courses.filter((c) => !c.is_enrolled).length}
-            </div>
-          </CardContent>
-        </Card>
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Results count */}
-      <div className="text-sm text-muted-foreground">
-        Showing {filteredCourses.length} of {courses.length} courses
-      </div>
+      {filteredCourses.length > 0 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing{" "}
+            <span className="font-medium text-foreground">
+              {filteredCourses.length}
+            </span>{" "}
+            {filteredCourses.length === 1 ? "course" : "courses"}
+          </p>
+        </div>
+      )}
 
       {/* Courses Grid */}
       {filteredCourses.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-center">
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted mb-4">
+              <BookOpen className="h-10 w-10 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No courses found</h3>
+            <p className="text-sm text-muted-foreground text-center max-w-sm mb-4">
               {searchQuery || filterStatus !== "all"
-                ? "No courses found matching your filters"
-                : "No courses available"}
+                ? "Try adjusting your search or filter to find what you're looking for"
+                : "There are no courses available at the moment"}
             </p>
             {(searchQuery || filterStatus !== "all") && (
               <Button
                 variant="outline"
-                className="mt-4"
                 onClick={() => {
                   setSearchQuery("");
                   setFilterStatus("all");
@@ -265,96 +283,107 @@ export default function BrowseCourses() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filteredCourses.map((course) => (
-            <Card key={course.id} className="flex flex-col">
+            <Card
+              key={course.id}
+              className="group overflow-hidden hover:shadow-lg transition-shadow"
+            >
               {/* Thumbnail */}
-              <div className="aspect-video relative bg-muted overflow-hidden">
+              <div className="relative aspect-video overflow-hidden bg-muted">
                 <img
                   src={course.thumbnail}
                   alt={course.title}
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
                   onError={(e) => {
                     e.currentTarget.src =
                       "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225'%3E%3Crect fill='%23e5e7eb' width='400' height='225'/%3E%3C/svg%3E";
                   }}
                 />
-                {course.is_enrolled && (
-                  <div className="absolute top-2 right-2">
-                    <Badge className="bg-green-500">Enrolled</Badge>
-                  </div>
+                {course.is_enrolled && !course.is_completed && (
+                  <Badge className="absolute top-3 right-3 bg-blue-600 hover:bg-blue-700">
+                    In Progress
+                  </Badge>
+                )}
+                {course.is_completed && (
+                  <Badge className="absolute top-3 right-3 bg-green-600 hover:bg-green-700">
+                    Completed
+                  </Badge>
                 )}
               </div>
 
-              <CardHeader>
-                <CardTitle className="line-clamp-2">
+              <CardHeader className="space-y-2">
+                <CardTitle className="line-clamp-2 text-xl">
                   {course.title || "Untitled Course"}
                 </CardTitle>
-                <CardDescription className="line-clamp-2">
+                <CardDescription className="line-clamp-2 text-sm">
                   {course.description || "No description available"}
                 </CardDescription>
               </CardHeader>
 
-              <CardContent className="flex-1">
-                <div className="space-y-2">
+              <CardContent className="space-y-4">
+                <div className="flex flex-col gap-2">
                   {course.teacher_name && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <GraduationCap className="h-4 w-4" />
-                      <span>{course.teacher_name}</span>
+                      <GraduationCap className="h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">{course.teacher_name}</span>
                     </div>
                   )}
                   {course.total_lessons !== undefined && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <BookOpen className="h-4 w-4" />
+                      <BookOpen className="h-4 w-4 flex-shrink-0" />
                       <span>
                         {course.total_lessons}{" "}
                         {course.total_lessons === 1 ? "lesson" : "lessons"}
                       </span>
                     </div>
                   )}
-                  {course.is_enrolled &&
-                    course.progress_percentage !== undefined &&
-                    !course.is_completed && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">
-                          {course.progress_percentage}% Complete
+                </div>
+
+                {/* Progress indicator */}
+                {course.is_enrolled &&
+                  !course.is_completed &&
+                  course.progress_percentage !== undefined && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Progress</span>
+                        <span className="font-medium">
+                          {course.progress_percentage}%
                         </span>
                       </div>
-                    )}
-                  {course.is_enrolled && course.is_completed && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span className="text-green-600 font-medium">
-                        Completed
-                      </span>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                        <div
+                          className="h-full bg-primary transition-all"
+                          style={{ width: `${course.progress_percentage}%` }}
+                        />
+                      </div>
                     </div>
                   )}
-                </div>
+
+                {course.is_completed && (
+                  <div className="flex items-center gap-2 rounded-md bg-green-50 dark:bg-green-950 px-3 py-2">
+                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                      Course Completed
+                    </span>
+                  </div>
+                )}
               </CardContent>
 
-              <CardFooter className="gap-2">
+              <CardFooter className="gap-2 pt-4">
                 {course.is_enrolled ? (
-                  <>
-                    <Button
-                      className="flex-1"
-                      onClick={() =>
-                        navigate(`/student/courses/${course.id}/learn`)
-                      }
-                    >
-                      {course.is_completed
-                        ? "Review Course"
-                        : course.progress_percentage === 0
-                        ? "Start Learning"
-                        : "Continue Learning"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => navigate(`/student/courses/${course.id}`)}
-                    >
-                      View Details
-                    </Button>
-                  </>
+                  <Button
+                    className="w-full"
+                    onClick={() =>
+                      navigate(`/student/courses/${course.id}/learn`)
+                    }
+                  >
+                    {course.is_completed
+                      ? "Review Course"
+                      : course.progress_percentage === 0
+                      ? "Start Learning"
+                      : "Continue Learning"}
+                  </Button>
                 ) : (
                   <>
                     <Button
@@ -365,9 +394,11 @@ export default function BrowseCourses() {
                     </Button>
                     <Button
                       variant="outline"
+                      size="icon"
                       onClick={() => navigate(`/student/courses/${course.id}`)}
+                      title="View Details"
                     >
-                      Details
+                      <BookOpen className="h-4 w-4" />
                     </Button>
                   </>
                 )}
@@ -379,43 +410,59 @@ export default function BrowseCourses() {
 
       {/* Enroll Confirmation Dialog */}
       <Dialog open={showEnrollDialog} onOpenChange={setShowEnrollDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Enroll in Course</DialogTitle>
+            <DialogTitle className="text-2xl">Enroll in Course</DialogTitle>
             <DialogDescription>
-              Are you sure you want to enroll in this course?
+              You're about to start your learning journey with this course
             </DialogDescription>
           </DialogHeader>
           {selectedCourse && (
-            <div className="space-y-4 py-4">
-              <div className="aspect-video relative bg-muted rounded-lg overflow-hidden">
+            <div className="space-y-4">
+              <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
                 <img
                   src={selectedCourse.thumbnail}
                   alt={selectedCourse.title}
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover"
                   onError={(e) => {
                     e.currentTarget.src =
                       "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225'%3E%3Crect fill='%23e5e7eb' width='400' height='225'/%3E%3C/svg%3E";
                   }}
                 />
               </div>
-              <div>
-                <h3 className="font-semibold text-lg">
-                  {selectedCourse.title}
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {selectedCourse.description}
-                </p>
-              </div>
-              {selectedCourse.teacher_name && (
-                <div className="flex items-center gap-2 text-sm">
-                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                  <span>Instructor: {selectedCourse.teacher_name}</span>
+              <div className="space-y-3">
+                <div>
+                  <h3 className="font-semibold text-lg leading-tight">
+                    {selectedCourse.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-2 line-clamp-3">
+                    {selectedCourse.description}
+                  </p>
                 </div>
-              )}
+                <div className="flex flex-col gap-2 pt-2 border-t">
+                  {selectedCourse.teacher_name && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Instructor:</span>
+                      <span className="font-medium">
+                        {selectedCourse.teacher_name}
+                      </span>
+                    </div>
+                  )}
+                  {selectedCourse.total_lessons !== undefined && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <BookOpen className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Lessons:</span>
+                      <span className="font-medium">
+                        {selectedCourse.total_lessons}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
               onClick={() => setShowEnrollDialog(false)}

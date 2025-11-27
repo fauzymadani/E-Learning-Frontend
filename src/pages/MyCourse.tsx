@@ -66,18 +66,38 @@ async function deleteCourse(courseId: number) {
   return data;
 }
 
+async function updateCourse(courseId: number, formData: CreateCourseForm) {
+  console.log("updateCourse API call:", { courseId, formData });
+  const { data } = await axios.put(`/courses/${courseId}`, formData);
+  console.log("updateCourse response:", data);
+  return data;
+}
+
 async function togglePublish(courseId: number, currentStatus: boolean) {
-  const { data } = await axios.put(`/courses/${courseId}/publish`, {
-    publish: !currentStatus, // ← GANTI dari is_published jadi publish
+  const payload = { publish: !currentStatus };
+  console.log("togglePublish API call:", {
+    courseId,
+    currentStatus,
+    willPublish: !currentStatus,
+    payload,
   });
+  const { data } = await axios.put(`/courses/${courseId}/publish`, payload);
+  console.log("togglePublish response:", data);
   return data;
 }
 
 export default function MyCourses() {
-  const navigate = useNavigate(); // ← TAMBAH INI
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [formData, setFormData] = useState<CreateCourseForm>({
+    title: "",
+    description: "",
+    thumbnail: "",
+  });
+  const [editFormData, setEditFormData] = useState<CreateCourseForm>({
     title: "",
     description: "",
     thumbnail: "",
@@ -87,7 +107,7 @@ export default function MyCourses() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["myCourses"],
     queryFn: fetchMyCourses,
-    staleTime: 5 * 60 * 1000,
+    refetchOnMount: true,
   });
 
   const courses = data?.courses || [];
@@ -105,6 +125,29 @@ export default function MyCourses() {
         description: "",
         thumbnail: "",
       });
+    },
+  });
+
+  // Update course mutation
+  const updateMutation = useMutation({
+    mutationFn: ({
+      courseId,
+      formData,
+    }: {
+      courseId: number;
+      formData: CreateCourseForm;
+    }) => updateCourse(courseId, formData),
+    onSuccess: async () => {
+      // Force refetch to get updated data
+      await queryClient.invalidateQueries({ queryKey: ["myCourses"] });
+      await queryClient.refetchQueries({ queryKey: ["myCourses"] });
+      queryClient.invalidateQueries({ queryKey: ["teacherDashboard"] });
+      setIsEditDialogOpen(false);
+      setEditingCourse(null);
+    },
+    onError: (error: any) => {
+      console.error("Update error:", error);
+      alert(error.response?.data?.error || "Failed to update course");
     },
   });
 
@@ -126,9 +169,15 @@ export default function MyCourses() {
       courseId: number;
       currentStatus: boolean;
     }) => togglePublish(courseId, currentStatus),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["myCourses"] });
+    onSuccess: async () => {
+      // Force refetch to get updated data
+      await queryClient.invalidateQueries({ queryKey: ["myCourses"] });
+      await queryClient.refetchQueries({ queryKey: ["myCourses"] });
       queryClient.invalidateQueries({ queryKey: ["teacherDashboard"] });
+    },
+    onError: (error: any) => {
+      console.error("Publish error:", error);
+      alert(error.response?.data?.error || "Failed to update publish status");
     },
   });
 
@@ -146,7 +195,31 @@ export default function MyCourses() {
   }
 
   function handleTogglePublish(courseId: number, currentStatus: boolean) {
+    console.log("Toggle publish clicked:", { courseId, currentStatus });
     publishMutation.mutate({ courseId, currentStatus });
+  }
+
+  function handleEditCourse(course: Course) {
+    console.log("Edit course clicked:", course);
+    setEditingCourse(course);
+    setEditFormData({
+      title: course.title,
+      description: course.description,
+      thumbnail: course.thumbnail,
+    });
+    setIsEditDialogOpen(true);
+  }
+
+  function handleUpdateCourse() {
+    console.log("Update course clicked:", { editingCourse, editFormData });
+    if (!editFormData.title || !editFormData.description || !editingCourse) {
+      alert("Please fill in all required fields");
+      return;
+    }
+    updateMutation.mutate({
+      courseId: editingCourse.id,
+      formData: editFormData,
+    });
   }
 
   if (isLoading) {
@@ -392,7 +465,12 @@ export default function MyCourses() {
 
                   {/* Row 2: Edit + Delete */}
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleEditCourse(course)}
+                    >
                       <Edit className="h-4 w-4 mr-2" />
                       Edit
                     </Button>
@@ -400,7 +478,9 @@ export default function MyCourses() {
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleDeleteCourse(course.id, course.title)}
+                      onClick={() =>
+                        handleDeleteCourse(course.id, course.title)
+                      }
                       disabled={deleteMutation.isPending}
                     >
                       <Trash2 className="h-4 w-4 mr-2 text-destructive" />
@@ -413,6 +493,77 @@ export default function MyCourses() {
           ))}
         </div>
       )}
+
+      {/* Edit Course Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Course</DialogTitle>
+            <DialogDescription>Update course information</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-title">Course Title *</Label>
+              <Input
+                id="edit-title"
+                placeholder="Enter course title"
+                value={editFormData.title}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, title: e.target.value })
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description *</Label>
+              <Textarea
+                id="edit-description"
+                placeholder="Enter course description"
+                value={editFormData.description}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    description: e.target.value,
+                  })
+                }
+                rows={4}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-thumbnail">Thumbnail URL</Label>
+              <Input
+                id="edit-thumbnail"
+                placeholder="Enter image URL"
+                value={editFormData.thumbnail}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    thumbnail: e.target.value,
+                  })
+                }
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+              disabled={updateMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateCourse}
+              disabled={updateMutation.isPending}
+            >
+              {updateMutation.isPending ? "Updating..." : "Update Course"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
