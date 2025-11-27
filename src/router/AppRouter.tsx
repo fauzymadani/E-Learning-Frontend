@@ -10,6 +10,9 @@ import CourseLessons from "../pages/teacher/CourseLessons";
 import Students from "../pages/teacher/Student"; // corrected path (file is Student.tsx)
 import Notifications from "../pages/Notification"; // corrected path (file is Notification.tsx)
 import Settings from "../pages/Settings";
+import StudentCourseLesson from "../pages/student/CourseLesson";
+import BrowseCourses from "../pages/student/BrowseCourses";
+import CourseDetail from "../pages/student/CourseDetail";
 
 export default function AppRouter() {
   const { user, isLoading } = useAuth();
@@ -63,7 +66,6 @@ export default function AppRouter() {
             )
           }
         />
-
         {/* Login - redirect if already logged in */}
         <Route
           path="/login"
@@ -81,7 +83,6 @@ export default function AppRouter() {
             )
           }
         />
-
         {/* Protected Routes */}
         <Route
           path="/student"
@@ -107,7 +108,6 @@ export default function AppRouter() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/courses/:courseId/lessons"
           element={
@@ -116,7 +116,6 @@ export default function AppRouter() {
             </ProtectedRoute>
           }
         />
-
         {/* 404 */}
         <Route path="*" element={<Navigate to="/" replace />} />
         <Route
@@ -128,7 +127,6 @@ export default function AppRouter() {
           }
         />
         {/* Removed duplicate /courses/:courseId/lessons route */}
-
         <Route
           path="/teacher/students"
           element={
@@ -137,7 +135,6 @@ export default function AppRouter() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/notifications"
           element={
@@ -146,7 +143,6 @@ export default function AppRouter() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/settings"
           element={
@@ -155,12 +151,36 @@ export default function AppRouter() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/profile"
           element={
             <ProtectedRoute allowedRoles={["teacher", "student", "admin"]}>
               <Settings />
+            </ProtectedRoute>
+          }
+        />
+        // Student Routes - ADD ProtectedRoute wrapper
+        <Route
+          path="/student/browse"
+          element={
+            <ProtectedRoute allowedRoles={["student"]}>
+              <BrowseCourses />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/courses/:courseId"
+          element={
+            <ProtectedRoute allowedRoles={["student"]}>
+              <CourseDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/courses/:courseId/learn"
+          element={
+            <ProtectedRoute allowedRoles={["student"]}>
+              <StudentCourseLesson />
             </ProtectedRoute>
           }
         />
