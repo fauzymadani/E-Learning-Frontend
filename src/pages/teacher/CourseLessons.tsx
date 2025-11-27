@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
+import MdEditor from "react-markdown-editor-lite";
+import MarkdownIt from "markdown-it";
+import "react-markdown-editor-lite/lib/index.css";
 import {
   Plus,
   Video,
@@ -33,7 +36,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+
+// Initialize markdown parser
+const mdParser = new MarkdownIt();
 
 interface Lesson {
   id: number;
@@ -70,7 +75,26 @@ async function createLesson(courseId: string, formData: FormData) {
 }
 
 async function deleteLesson(courseId: string, lessonId: number) {
-  const { data } = await axios.delete(`/courses/${courseId}/lessons/${lessonId}`);
+  const { data } = await axios.delete(
+    `/courses/${courseId}/lessons/${lessonId}`
+  );
+  return data;
+}
+
+async function updateLesson(
+  courseId: string,
+  lessonId: number,
+  formData: FormData
+) {
+  const { data } = await axios.put(
+    `/courses/${courseId}/lessons/${lessonId}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
   return data;
 }
 
@@ -79,6 +103,7 @@ export default function CourseLessons() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [formData, setFormData] = useState<CreateLessonForm>({
     title: "",
     content: "",
@@ -87,7 +112,11 @@ export default function CourseLessons() {
   });
 
   // Fetch lessons
-  const { data: lessons = [], isLoading, error } = useQuery({
+  const {
+    data: lessons = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["lessons", courseId],
     queryFn: () => fetchLessons(courseId!),
     enabled: !!courseId,
@@ -118,6 +147,29 @@ export default function CourseLessons() {
     },
   });
 
+  // Update lesson mutation
+  const updateMutation = useMutation({
+    mutationFn: ({
+      lessonId,
+      formData,
+    }: {
+      lessonId: number;
+      formData: FormData;
+    }) => updateLesson(courseId!, lessonId, formData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lessons", courseId] });
+      queryClient.invalidateQueries({ queryKey: ["myCourses"] });
+      setIsDialogOpen(false);
+      setEditingLesson(null);
+      setFormData({
+        title: "",
+        content: "",
+        video: null,
+        file: null,
+      });
+    },
+  });
+
   function handleCreateLesson() {
     if (!formData.title) {
       alert("Title is required");
@@ -134,7 +186,33 @@ export default function CourseLessons() {
       data.append("file", formData.file);
     }
 
-    createMutation.mutate(data);
+    if (editingLesson) {
+      updateMutation.mutate({ lessonId: editingLesson.id, formData: data });
+    } else {
+      createMutation.mutate(data);
+    }
+  }
+
+  function handleEditLesson(lesson: Lesson) {
+    setEditingLesson(lesson);
+    setFormData({
+      title: lesson.title,
+      content: lesson.content,
+      video: null,
+      file: null,
+    });
+    setIsDialogOpen(true);
+  }
+
+  function handleCloseDialog() {
+    setIsDialogOpen(false);
+    setEditingLesson(null);
+    setFormData({
+      title: "",
+      content: "",
+      video: null,
+      file: null,
+    });
   }
 
   function handleDeleteLesson(lessonId: number, lessonTitle: string) {
@@ -146,7 +224,12 @@ export default function CourseLessons() {
     const file = e.target.files?.[0];
     if (file) {
       // Validate video file type
-      const validTypes = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/webm"];
+      const validTypes = [
+        "video/mp4",
+        "video/quicktime",
+        "video/x-msvideo",
+        "video/webm",
+      ];
       if (!validTypes.includes(file.type)) {
         alert("Only MP4, MOV, AVI, and WebM videos are allowed");
         e.target.value = "";
@@ -206,7 +289,9 @@ export default function CourseLessons() {
         <Card className="max-w-md border-destructive">
           <CardContent className="pt-6">
             <p className="text-destructive font-medium">
-              {error instanceof Error ? error.message : "Failed to load lessons"}
+              {error instanceof Error
+                ? error.message
+                : "Failed to load lessons"}
             </p>
           </CardContent>
         </Card>
@@ -227,14 +312,16 @@ export default function CourseLessons() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Course Lessons</h2>
+            <h2 className="text-3xl font-bold tracking-tight">
+              Course Lessons
+            </h2>
             <p className="text-muted-foreground">
               Manage lessons for this course • {lessons.length} lessons
             </p>
           </div>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -243,9 +330,13 @@ export default function CourseLessons() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>Create New Lesson</DialogTitle>
+              <DialogTitle>
+                {editingLesson ? "Edit Lesson" : "Create New Lesson"}
+              </DialogTitle>
               <DialogDescription>
-                Add a new lesson with video and PDF materials
+                {editingLesson
+                  ? "Update the lesson details. Leave video/file fields empty to keep existing files."
+                  : "Add a new lesson with video and PDF materials"}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -262,16 +353,22 @@ export default function CourseLessons() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="content">Content/Description</Label>
-                <Textarea
-                  id="content"
-                  placeholder="Describe what students will learn..."
-                  value={formData.content}
-                  onChange={(e) =>
-                    setFormData({ ...formData, content: e.target.value })
-                  }
-                  rows={4}
-                />
+                <Label htmlFor="content">Lesson Content (Markdown)</Label>
+                <div className="border rounded-md overflow-hidden">
+                  <MdEditor
+                    value={formData.content}
+                    style={{ height: "400px" }}
+                    renderHTML={(text) => mdParser.render(text)}
+                    onChange={({ text }) =>
+                      setFormData({ ...formData, content: text })
+                    }
+                    placeholder="Write your lesson content in markdown..."
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Use markdown to format your content. Supports headings, lists,
+                  code blocks, etc.
+                </p>
               </div>
 
               <div className="grid gap-2">
@@ -344,19 +441,21 @@ export default function CourseLessons() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsDialogOpen(false)}
+                onClick={handleCloseDialog}
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleCreateLesson}
-                disabled={createMutation.isPending}
+                disabled={createMutation.isPending || updateMutation.isPending}
               >
-                {createMutation.isPending ? (
+                {createMutation.isPending || updateMutation.isPending ? (
                   <>
                     <Upload className="mr-2 h-4 w-4 animate-pulse" />
-                    Uploading...
+                    {editingLesson ? "Updating..." : "Uploading..."}
                   </>
+                ) : editingLesson ? (
+                  "Update Lesson"
                 ) : (
                   "Create Lesson"
                 )}
@@ -373,7 +472,8 @@ export default function CourseLessons() {
             <Video className="h-16 w-16 text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">No lessons yet</h3>
             <p className="text-muted-foreground text-center mb-6 max-w-sm">
-              Start building your course by adding lessons with videos and materials.
+              Start building your course by adding lessons with videos and
+              materials.
             </p>
             <Button onClick={() => setIsDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
@@ -402,13 +502,19 @@ export default function CourseLessons() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditLesson(lesson)}
+                    >
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDeleteLesson(lesson.id, lesson.title)}
+                      onClick={() =>
+                        handleDeleteLesson(lesson.id, lesson.title)
+                      }
                       disabled={deleteMutation.isPending}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
@@ -421,13 +527,17 @@ export default function CourseLessons() {
                   {lesson.video_url && (
                     <div className="flex items-center gap-2 text-sm">
                       <Video className="h-4 w-4 text-primary" />
-                      <span className="text-muted-foreground">Video available</span>
+                      <span className="text-muted-foreground">
+                        Video available
+                      </span>
                     </div>
                   )}
                   {lesson.file_url && (
                     <div className="flex items-center gap-2 text-sm">
                       <FileText className="h-4 w-4 text-primary" />
-                      <span className="text-muted-foreground">PDF material</span>
+                      <span className="text-muted-foreground">
+                        PDF material
+                      </span>
                     </div>
                   )}
                   {!lesson.video_url && !lesson.file_url && (

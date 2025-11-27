@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
 import axios from "../../api/axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -401,11 +404,9 @@ export default function StudentCourseLesson() {
               <CardContent>
                 <div className="prose prose-sm max-w-none dark:prose-invert">
                   {currentLesson.content ? (
-                    <div
-                      dangerouslySetInnerHTML={{
-                        __html: currentLesson.content,
-                      }}
-                    />
+                    <ReactMarkdown rehypePlugins={[rehypeRaw, rehypeSanitize]}>
+                      {currentLesson.content}
+                    </ReactMarkdown>
                   ) : (
                     <p className="text-muted-foreground">
                       No content available
