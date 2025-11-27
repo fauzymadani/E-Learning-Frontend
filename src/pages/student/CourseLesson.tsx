@@ -11,6 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   CheckCircle,
   Circle,
   ChevronLeft,
@@ -18,6 +26,7 @@ import {
   BookOpen,
   Clock,
   FileText,
+  PartyPopper,
 } from "lucide-react";
 
 interface Lesson {
@@ -57,6 +66,7 @@ export default function StudentCourseLesson() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [markingComplete, setMarkingComplete] = useState(false);
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
 
   useEffect(() => {
     fetchCourseData();
@@ -128,17 +138,35 @@ export default function StudentCourseLesson() {
         // Unmark
         await axios.delete(`/progress/lessons/${lessonId}/complete`);
       } else {
-        // Mark as completed
-        await axios.post(`/progress/lessons/${lessonId}/complete`);
+        // Mark as completed - send empty object as body
+        await axios.post(`/progress/lessons/${lessonId}/complete`, {});
       }
 
       // Refresh data
       await fetchCourseData();
+
+      // Check if all lessons completed after refresh
+      const updatedLessons = lessons.map((l) =>
+        l.id === lessonId ? { ...l, is_completed: !isCompleted } : l
+      );
+      const allCompleted = updatedLessons.every((l) => l.is_completed);
+
+      if (allCompleted && !isCompleted) {
+        // Show completion dialog only when marking last lesson as complete
+        setShowCompletionDialog(true);
+      }
     } catch (err: any) {
       console.error("Failed to update progress:", err);
+      // Show error to user
+      alert(err.response?.data?.error || "Failed to update lesson progress");
     } finally {
       setMarkingComplete(false);
     }
+  }
+
+  function handleCourseCompletion() {
+    setShowCompletionDialog(false);
+    navigate("/student");
   }
 
   function goToNextLesson() {
@@ -453,6 +481,46 @@ export default function StudentCourseLesson() {
           </div>
         </div>
       </div>
+
+      {/* Course Completion Dialog */}
+      <Dialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex justify-center mb-4">
+              <div className="h-16 w-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                <PartyPopper className="h-8 w-8 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+            <DialogTitle className="text-center text-2xl">
+              Congratulations! 🎉
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              You've completed all lessons in this course!
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="text-center space-y-2">
+              <p className="text-sm text-muted-foreground">
+                <strong className="text-foreground">{course?.title}</strong>
+              </p>
+              <div className="flex items-center justify-center gap-2 text-sm">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="font-medium">
+                  {lessons.length} lessons completed
+                </span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-center">
+            <Button
+              onClick={handleCourseCompletion}
+              className="w-full sm:w-auto"
+            >
+              Back to Dashboard
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
