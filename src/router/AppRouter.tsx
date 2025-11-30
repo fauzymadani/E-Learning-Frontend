@@ -13,6 +13,10 @@ import Settings from "../pages/Settings";
 import StudentCourseLesson from "../pages/student/CourseLesson";
 import BrowseCourses from "../pages/student/BrowseCourses";
 import CourseDetail from "../pages/student/CourseDetail";
+import UserManagement from "../pages/admin/UserManagement";
+import CourseManagement from "@/pages/admin/CourseManagement";
+import NotificationManagement from "@/pages/admin/NotificationManagement";
+import Reports from "@/pages/admin/Reports";
 
 export default function AppRouter() {
   const { user, isLoading } = useAuth();
@@ -181,6 +185,38 @@ export default function AppRouter() {
           element={
             <ProtectedRoute allowedRoles={["student"]}>
               <StudentCourseLesson />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <UserManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/courses"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <CourseManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/notifications"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <NotificationManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/reports"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <Reports />
             </ProtectedRoute>
           }
         />

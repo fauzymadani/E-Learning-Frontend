@@ -61,6 +61,7 @@ export function AppSidebar() {
         { name: "Users", path: "/admin/users", icon: Users },
         { name: "Courses", path: "/admin/courses", icon: BookOpen },
         { name: "Reports", path: "/admin/reports", icon: FileText },
+        { name: "Notifications", path: "/admin/notifications", icon: Bell },
       ];
     }
     return [];
