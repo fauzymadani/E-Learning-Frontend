@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
@@ -30,31 +30,53 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+interface Course {
+  id: number;
+  title: string;
+  description: string;
+  thumbnail: string;
+  category_id: number | null;
+  teacher_id: number;
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 interface Enrollment {
   id: number;
   course_id: number;
   user_id: number;
   enrolled_at: string;
   status: string;
-  progress: number;
-  course: {
-    id: number;
-    title: string;
-    description: string;
-    thumbnail: string;
-    teacher_name: string;
-    total_lessons: number;
-  };
+  course: Course;
 }
 
-interface MyEnrollmentsResponse {
-  enrollments: Enrollment[];
-  total: number;
+// Fungsi untuk fetch progress dari endpoint terpisah
+async function fetchCourseProgress(courseId: number): Promise<number> {
+  try {
+    const { data } = await axios.get(`/progress/courses/${courseId}`);
+    return data.progress_percentage || 0;
+  } catch (error) {
+    console.error(`Failed to fetch progress for course ${courseId}:`, error);
+    return 0;
+  }
 }
 
-async function fetchMyEnrollments(): Promise<MyEnrollmentsResponse> {
+// Fungsi untuk fetch total lessons
+async function fetchCourseLessons(courseId: number): Promise<number> {
+  try {
+    const { data } = await axios.get(`/courses/${courseId}/lessons`);
+    return data.length || 0;
+  } catch (error) {
+    console.error(`Failed to fetch lessons for course ${courseId}:`, error);
+    return 0;
+  }
+}
+
+async function fetchMyEnrollments(): Promise<Enrollment[]> {
   const { data } = await axios.get("/enrollments/my-courses");
-  return data;
+  // Backend returns array directly
+  return Array.isArray(data) ? data : [];
 }
 
 export default function MyLearning() {
@@ -62,16 +84,57 @@ export default function MyLearning() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("recent");
+  const [enrollmentsWithProgress, setEnrollmentsWithProgress] = useState<
+    Array<
+      Enrollment & {
+        progress: number;
+        total_lessons: number;
+        teacher_name: string;
+      }
+    >
+  >([]);
 
-  const { data, isLoading, error } = useQuery({
+  const {
+    data: enrollments,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["myEnrollments"],
     queryFn: fetchMyEnrollments,
   });
 
-  const enrollments = data?.enrollments || [];
+  // Fetch progress dan lessons untuk setiap enrollment
+  useEffect(() => {
+    if (!enrollments || enrollments.length === 0) {
+      setEnrollmentsWithProgress([]);
+      return;
+    }
+
+    const fetchProgressAndLessons = async () => {
+      const enrichedEnrollments = await Promise.all(
+        enrollments.map(async (enrollment) => {
+          const [progress, totalLessons] = await Promise.all([
+            fetchCourseProgress(enrollment.course_id),
+            fetchCourseLessons(enrollment.course_id),
+          ]);
+
+          return {
+            ...enrollment,
+            progress,
+            total_lessons: totalLessons,
+            teacher_name: "Instructor", // Default jika tidak ada
+          };
+        })
+      );
+
+      setEnrollmentsWithProgress(enrichedEnrollments);
+    };
+
+    fetchProgressAndLessons();
+  }, [enrollments]);
 
   // Filter & Sort
-  const filteredEnrollments = enrollments
+  const filteredEnrollments = enrollmentsWithProgress
     .filter((enrollment) => {
       const matchesSearch = enrollment.course.title
         .toLowerCase()
@@ -102,11 +165,12 @@ export default function MyLearning() {
 
   // Stats
   const stats = {
-    total: enrollments.length,
-    completed: enrollments.filter((e) => e.progress === 100).length,
-    inProgress: enrollments.filter((e) => e.progress > 0 && e.progress < 100)
-      .length,
-    notStarted: enrollments.filter((e) => e.progress === 0).length,
+    total: enrollmentsWithProgress.length,
+    completed: enrollmentsWithProgress.filter((e) => e.progress === 100).length,
+    inProgress: enrollmentsWithProgress.filter(
+      (e) => e.progress > 0 && e.progress < 100
+    ).length,
+    notStarted: enrollmentsWithProgress.filter((e) => e.progress === 0).length,
   };
 
   if (isLoading) {
@@ -333,10 +397,12 @@ export default function MyLearning() {
                 <CardHeader>
                   <CardTitle className="line-clamp-2">{course.title}</CardTitle>
                   <CardDescription className="flex items-center gap-2">
-                    <span className="text-xs">By {course.teacher_name}</span>
+                    <span className="text-xs">
+                      By {enrollment.teacher_name}
+                    </span>
                     <span className="text-xs">•</span>
                     <span className="text-xs">
-                      {course.total_lessons} lessons
+                      {enrollment.total_lessons} lessons
                     </span>
                   </CardDescription>
                 </CardHeader>
@@ -350,7 +416,7 @@ export default function MyLearning() {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Progress</span>
                       <span className="font-medium">
-                        {enrollment.progress}%
+                        {Math.round(enrollment.progress)}%
                       </span>
                     </div>
                     <Progress value={enrollment.progress} className="h-2" />

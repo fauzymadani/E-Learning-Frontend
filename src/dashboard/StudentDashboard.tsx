@@ -5,7 +5,8 @@ import {
   Clock,
   CheckCircle,
   TrendingUp,
-  PlayCircle,
+  Bell,
+  Search,
 } from "lucide-react";
 import axios from "../api/axios";
 import {
@@ -17,27 +18,22 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface Course {
+interface Notification {
   id: number;
   title: string;
-  thumbnail: string;
-  category: string;
-  progress: number;
-  total_lessons: number;
-  completed_lessons: number;
-  last_accessed: string;
-  status: string;
+  message: string;
+  type: string;
+  is_read: boolean;
+  created_at: string;
 }
 
 interface DashboardData {
-  enrolled_courses: Course[];
+  recent_notifications: Notification[];
   stats: {
     total_enrolled: number;
     in_progress: number;
-    completed: number;
+    courses_completed: number;
     total_lessons_completed: number;
   };
 }
@@ -55,43 +51,13 @@ export default function StudentDashboard() {
   async function fetchDashboard() {
     try {
       const res = await axios.get("/dashboard/student");
-
-      const enrolled = res.data.enrolled_courses;
-      const progressList = res.data.learning_progress;
-
-      const mergedCourses = enrolled.map((c: any) => {
-        const progress = progressList.find((p: any) => p.course_id === c.id);
-
-        const progressPercent = progress?.progress_percent || 0;
-        // Check both enrollment status and progress percentage
-        const enrollmentStatus = c.status || "";
-        const isCompleted =
-          enrollmentStatus === "completed" || progressPercent === 100;
-
-        return {
-          id: c.id,
-          title: c.title,
-          thumbnail: c.thumbnail,
-          category: c.teacher_name || "General",
-          progress: progressPercent,
-          total_lessons: progress?.total_lessons ?? c.total_lessons,
-          completed_lessons: progress?.completed_lessons ?? c.completed_lessons,
-          last_accessed: progress?.last_accessed_at,
-          status: isCompleted
-            ? "completed"
-            : progressPercent === 0
-            ? "not_started"
-            : "in_progress",
-        };
-      });
-
       setData({
-        enrolled_courses: mergedCourses,
+        recent_notifications: res.data.recent_notifications || [],
         stats: {
-          total_enrolled: res.data.stats.total_enrolled,
-          in_progress: res.data.stats.in_progress,
-          completed: res.data.stats.courses_completed,
-          total_lessons_completed: res.data.stats.total_lessons_completed,
+          total_enrolled: res.data.stats.total_enrolled || 0,
+          in_progress: res.data.stats.in_progress || 0,
+          courses_completed: res.data.stats.courses_completed || 0,
+          total_lessons_completed: res.data.stats.total_lessons_completed || 0,
         },
       });
     } catch (err: any) {
@@ -150,285 +116,287 @@ export default function StudentDashboard() {
     {
       title: "Enrolled Courses",
       value: data.stats.total_enrolled,
-      description: "Total courses",
+      description: "Total courses enrolled",
       icon: BookOpen,
-      trend: "Keep learning!",
+      color: "text-blue-500",
     },
     {
       title: "In Progress",
       value: data.stats.in_progress,
       description: "Active learning",
       icon: Clock,
-      trend: `${
-        data.stats.total_enrolled -
-        data.stats.in_progress -
-        data.stats.completed
-      } not started`,
+      color: "text-orange-500",
     },
     {
       title: "Completed",
-      value: data.stats.completed,
+      value: data.stats.courses_completed,
       description: "Courses finished",
       icon: CheckCircle,
-      trend: `${Math.round(
-        (data.stats.completed / (data.stats.total_enrolled || 1)) * 100
-      )}% completion rate`,
+      color: "text-green-500",
     },
     {
       title: "Lessons Completed",
       value: data.stats.total_lessons_completed,
-      description: "Total progress",
+      description: "Total lessons done",
       icon: TrendingUp,
-      trend: "Great work!",
+      color: "text-purple-500",
     },
   ];
 
-  const inProgressCourses = data.enrolled_courses.filter(
-    (c) => c.status === "in_progress"
-  );
-  const completedCourses = data.enrolled_courses.filter(
-    (c) => c.status === "completed"
-  );
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case "completed":
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case "enrollment":
+        return <BookOpen className="h-4 w-4 text-blue-500" />;
+      default:
+        return <Bell className="h-4 w-4 text-gray-500" />;
+    }
+  };
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
+    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">My Learning</h2>
+          <h2 className="text-3xl font-bold tracking-tight">
+            Student Dashboard
+          </h2>
           <p className="text-muted-foreground">
-            Track your progress and continue learning
+            Welcome back! Track your learning progress
           </p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => navigate("/student/my-learning")}>
+            <BookOpen className="mr-2 h-4 w-4" />
+            My Courses
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/student/browse")}>
+            <Search className="mr-2 h-4 w-4" />
+            Browse
+          </Button>
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="in-progress">
-            In Progress ({inProgressCourses.length})
-          </TabsTrigger>
-          <TabsTrigger value="completed">
-            Completed ({completedCourses.length})
-          </TabsTrigger>
-        </TabsList>
+      {/* Stats Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {statCards.map((stat, idx) => (
+          <Card key={idx}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {stat.title}
+              </CardTitle>
+              <stat.icon className={`h-4 w-4 ${stat.color}`} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stat.value}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stat.description}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {statCards.map((stat, idx) => (
-              <Card key={idx}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    {stat.title}
-                  </CardTitle>
-                  <stat.icon className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {stat.description}
-                  </p>
-                  <p className="text-xs text-muted-foreground pt-1">
-                    {stat.trend}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+      {/* Quick Actions & Notifications */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>
+              Navigate to different sections quickly
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => navigate("/student/my-learning")}
+            >
+              <BookOpen className="mr-2 h-4 w-4" />
+              View My Enrolled Courses
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => navigate("/student/browse")}
+            >
+              <Search className="mr-2 h-4 w-4" />
+              Browse Available Courses
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => navigate("/notifications")}
+            >
+              <Bell className="mr-2 h-4 w-4" />
+              View All Notifications
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => navigate("/settings")}
+            >
+              <TrendingUp className="mr-2 h-4 w-4" />
+              Account Settings
+            </Button>
+          </CardContent>
+        </Card>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Continue Learning</CardTitle>
-                <CardDescription>Pick up where you left off</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {inProgressCourses.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <PlayCircle className="h-12 w-12 text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground text-sm">
-                      No courses in progress
-                    </p>
-                    <Button
-                      className="mt-4"
-                      variant="outline"
-                      onClick={() => navigate("/student/browse")}
-                    >
-                      Browse Courses
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {inProgressCourses.slice(0, 3).map((course) => (
-                      <div key={course.id} className="space-y-3">
-                        <div className="flex items-start gap-4">
-                          <div className="relative h-16 w-24 rounded-md overflow-hidden bg-muted shrink-0">
-                            <img
-                              src={course.thumbnail}
-                              alt={course.title}
-                              className="h-full w-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.src =
-                                  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='64'%3E%3Crect fill='%23e5e7eb' width='96' height='64'/%3E%3C/svg%3E";
-                              }}
-                            />
-                          </div>
-                          <div className="flex-1 space-y-1">
-                            <p className="text-sm font-medium leading-none">
-                              {course.title}
-                            </p>
-                            <Badge variant="outline" className="text-xs">
-                              {course.category}
-                            </Badge>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
-                              <span>
-                                {course.completed_lessons} /{" "}
-                                {course.total_lessons} lessons
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        {course.status !== "completed" && (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">
-                                Progress
-                              </span>
-                              <span className="font-medium">
-                                {course.progress}%
-                              </span>
-                            </div>
-                            <Progress value={course.progress} className="h-2" />
-                          </div>
-                        )}
-                        <Button
-                          size="sm"
-                          className="w-full"
-                          onClick={() =>
-                            navigate(`/student/courses/${course.id}/learn`)
-                          }
-                        >
-                          {course.status === "completed"
-                            ? "Review Course"
-                            : course.status === "not_started"
-                            ? "Start Learning"
-                            : "Continue Learning"}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Note</CardTitle>
-                <CardDescription>
-                  Note for student
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p>
-                  Welcome to your student dashboard! Here you can track your
-                  learning progress, view your enrolled courses, and continue
-                  where you left off. Keep up the great work and happy learning!
+        {/* Recent Notifications */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Notifications</CardTitle>
+            <CardDescription>Latest updates and announcements</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {data.recent_notifications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <Bell className="h-12 w-12 text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  No notifications yet
                 </p>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="in-progress" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {inProgressCourses.map((course) => (
-              <Card key={course.id}>
-                <div className="aspect-video relative bg-muted">
-                  <img
-                    src={course.thumbnail}
-                    alt={course.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src =
-                        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225'%3E%3Crect fill='%23e5e7eb' width='400' height='225'/%3E%3C/svg%3E";
-                    }}
-                  />
-                </div>
-                <CardHeader>
-                  <CardTitle className="line-clamp-1">{course.title}</CardTitle>
-                  <CardDescription>
-                    <Badge variant="outline">{course.category}</Badge>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium">{course.progress}%</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {data.recent_notifications.slice(0, 5).map((notification) => (
+                  <div
+                    key={notification.id}
+                    className={`flex gap-3 p-3 rounded-lg border transition-colors ${
+                      notification.is_read
+                        ? "bg-background"
+                        : "bg-muted/50 border-primary/20"
+                    }`}
+                  >
+                    <div className="mt-0.5">
+                      {getNotificationIcon(notification.type)}
                     </div>
-                    <Progress value={course.progress} />
-                    <p className="text-xs text-muted-foreground">
-                      {course.completed_lessons} of {course.total_lessons}{" "}
-                      lessons completed
-                    </p>
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-medium leading-none">
+                          {notification.title}
+                        </p>
+                        {!notification.is_read && (
+                          <Badge
+                            variant="secondary"
+                            className="text-xs shrink-0"
+                          >
+                            New
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {notification.message}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(notification.created_at).toLocaleDateString(
+                          "en-US",
+                          {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }
+                        )}
+                      </p>
+                    </div>
                   </div>
+                ))}
+                {data.recent_notifications.length > 5 && (
                   <Button
+                    variant="ghost"
                     className="w-full"
-                    onClick={() =>
-                      navigate(`/student/courses/${course.id}/learn`)
-                    }
+                    onClick={() => navigate("/notifications")}
                   >
-                    Continue
+                    View All Notifications
                   </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-        <TabsContent value="completed" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {completedCourses.map((course) => (
-              <Card key={course.id}>
-                <div className="aspect-video relative bg-muted">
-                  <img
-                    src={course.thumbnail}
-                    alt={course.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src =
-                        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225'%3E%3Crect fill='%23e5e7eb' width='400' height='225'/%3E%3C/svg%3E";
-                    }}
-                  />
-                  <div className="absolute top-2 right-2">
-                    <Badge className="bg-green-500">Completed</Badge>
-                  </div>
-                </div>
-                <CardHeader>
-                  <CardTitle className="line-clamp-1">{course.title}</CardTitle>
-                  <CardDescription>
-                    <Badge variant="outline">{course.category}</Badge>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>{course.total_lessons} lessons completed</span>
-                  </div>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() =>
-                      navigate(`/student/courses/${course.id}/learn`)
-                    }
-                  >
-                    Review Course
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+      {/* Welcome Card */}
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-900">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-blue-500" />
+            Welcome to Your Learning Journey!
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            You're doing great! Keep up the momentum and continue exploring new
+            courses. Remember:
+          </p>
+          <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
+            <li>Consistency is key - try to learn something every day</li>
+            <li>Complete lessons at your own pace</li>
+            <li>Track your progress in the "My Learning" section</li>
+            <li>Don't hesitate to review completed courses</li>
+          </ul>
+          <div className="flex gap-2 pt-2">
+            <Button onClick={() => navigate("/student/my-learning")}>
+              Continue Learning
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/student/browse")}
+            >
+              Explore Courses
+            </Button>
           </div>
-        </TabsContent>
-      </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Progress Summary (if enrolled) */}
+      {data.stats.total_enrolled > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Progress Summary</CardTitle>
+            <CardDescription>
+              Overview of your learning achievements
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Course Completion</span>
+                <span className="text-sm text-muted-foreground">
+                  {data.stats.courses_completed} / {data.stats.total_enrolled}{" "}
+                  courses
+                </span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-green-500 transition-all"
+                  style={{
+                    width: `${
+                      data.stats.total_enrolled > 0
+                        ? (data.stats.courses_completed /
+                            data.stats.total_enrolled) *
+                          100
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {data.stats.total_enrolled > 0
+                  ? `${Math.round(
+                      (data.stats.courses_completed /
+                        data.stats.total_enrolled) *
+                        100
+                    )}% of your enrolled courses completed`
+                  : "No courses enrolled yet"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
