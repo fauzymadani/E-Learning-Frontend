@@ -51,7 +51,7 @@ export function AppSidebar() {
     if (user.role === "student") {
       return [
         { name: "Dashboard", path: "/student", icon: LayoutDashboard },
-        { name: "My Courses", path: "/student/courses", icon: BookOpen },
+        { name: "My Courses", path: "/student/my-learning", icon: BookOpen },
         { name: "Browse", path: "/student/browse", icon: Search },
       ];
     }

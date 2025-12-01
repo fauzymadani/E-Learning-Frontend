@@ -17,6 +17,8 @@ import UserManagement from "../pages/admin/UserManagement";
 import CourseManagement from "@/pages/admin/CourseManagement";
 import NotificationManagement from "@/pages/admin/NotificationManagement";
 import Reports from "@/pages/admin/Reports";
+import Register from "@/pages/Register";
+import MyLearning from "@/pages/student/MyLearning";
 
 export default function AppRouter() {
   const { user, isLoading } = useAuth();
@@ -84,6 +86,22 @@ export default function AppRouter() {
               )
             ) : (
               <Login />
+            )
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            user ? (
+              user.role === "student" ? (
+                <Navigate to="/student" replace />
+              ) : user.role === "teacher" ? (
+                <Navigate to="/teacher" replace />
+              ) : (
+                <Navigate to="/admin" replace />
+              )
+            ) : (
+              <Register />
             )
           }
         />
@@ -217,6 +235,14 @@ export default function AppRouter() {
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
               <Reports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/my-learning"
+          element={
+            <ProtectedRoute allowedRoles={["student"]}>
+              <MyLearning />
             </ProtectedRoute>
           }
         />

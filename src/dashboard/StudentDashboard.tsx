@@ -322,65 +322,17 @@ export default function StudentDashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
+                <CardTitle>Note</CardTitle>
                 <CardDescription>
-                  Your latest course interactions
+                  Note for student
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {data.enrolled_courses.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Clock className="h-12 w-12 text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground text-sm">
-                      No activity yet
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {data.enrolled_courses
-                      .sort(
-                        (a, b) =>
-                          new Date(b.last_accessed).getTime() -
-                          new Date(a.last_accessed).getTime()
-                      )
-                      .slice(0, 5)
-                      .map((course) => (
-                        <div
-                          key={course.id}
-                          className="flex items-center gap-4 pb-4 border-b last:border-0"
-                        >
-                          <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                            <BookOpen className="h-5 w-5" />
-                          </div>
-                          <div className="flex-1 space-y-1">
-                            <p className="text-sm font-medium leading-none">
-                              {course.title}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Last accessed{" "}
-                              {new Date(
-                                course.last_accessed
-                              ).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                              })}
-                            </p>
-                          </div>
-                          <Badge
-                            variant={
-                              course.status === "completed"
-                                ? "default"
-                                : "secondary"
-                            }
-                          >
-                            {course.status === "completed"
-                              ? "Done"
-                              : `${course.progress}%`}
-                          </Badge>
-                        </div>
-                      ))}
-                  </div>
-                )}
+                <p>
+                  Welcome to your student dashboard! Here you can track your
+                  learning progress, view your enrolled courses, and continue
+                  where you left off. Keep up the great work and happy learning!
+                </p>
               </CardContent>
             </Card>
           </div>

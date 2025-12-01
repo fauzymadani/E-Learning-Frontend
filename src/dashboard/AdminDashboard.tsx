@@ -9,7 +9,6 @@ import {
   Clock,
 } from "lucide-react";
 import axios from "../api/axios";
-import Navbar from "../components/Navbar";
 import {
   Card,
   CardContent,
