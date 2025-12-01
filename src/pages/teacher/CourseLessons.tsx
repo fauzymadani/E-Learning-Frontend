@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
 import MdEditor from "react-markdown-editor-lite";
 import MarkdownIt from "markdown-it";
+import ReactMarkdown from "react-markdown";
 import "react-markdown-editor-lite/lib/index.css";
 import {
   Plus,
@@ -14,6 +15,7 @@ import {
   Upload,
   X,
   ArrowLeft,
+  Eye,
 } from "lucide-react";
 import axios from "../../api/axios";
 import {
@@ -36,6 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/useAuth";
 
 // Initialize markdown parser
 const mdParser = new MarkdownIt();
@@ -102,7 +105,10 @@ export default function CourseLessons() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewLesson, setPreviewLesson] = useState<Lesson | null>(null);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [formData, setFormData] = useState<CreateLessonForm>({
     title: "",
@@ -128,6 +134,8 @@ export default function CourseLessons() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lessons", courseId] });
       queryClient.invalidateQueries({ queryKey: ["myCourses"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "courses"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", user?.role] });
       setIsDialogOpen(false);
       setFormData({
         title: "",
@@ -135,6 +143,9 @@ export default function CourseLessons() {
         video: null,
         file: null,
       });
+    },
+    onError: (error: any) => {
+      alert(error.response?.data?.error || "Failed to create lesson");
     },
   });
 
@@ -144,6 +155,11 @@ export default function CourseLessons() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lessons", courseId] });
       queryClient.invalidateQueries({ queryKey: ["myCourses"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "courses"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", user?.role] });
+    },
+    onError: (error: any) => {
+      alert(error.response?.data?.error || "Failed to delete lesson");
     },
   });
 
@@ -159,6 +175,8 @@ export default function CourseLessons() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lessons", courseId] });
       queryClient.invalidateQueries({ queryKey: ["myCourses"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "courses"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", user?.role] });
       setIsDialogOpen(false);
       setEditingLesson(null);
       setFormData({
@@ -167,6 +185,9 @@ export default function CourseLessons() {
         video: null,
         file: null,
       });
+    },
+    onError: (error: any) => {
+      alert(error.response?.data?.error || "Failed to update lesson");
     },
   });
 
@@ -204,6 +225,11 @@ export default function CourseLessons() {
     setIsDialogOpen(true);
   }
 
+  function handlePreviewLesson(lesson: Lesson) {
+    setPreviewLesson(lesson);
+    setIsPreviewOpen(true);
+  }
+
   function handleCloseDialog() {
     setIsDialogOpen(false);
     setEditingLesson(null);
@@ -213,6 +239,14 @@ export default function CourseLessons() {
       video: null,
       file: null,
     });
+  }
+
+  function handleDialogOpenChange(open: boolean) {
+    if (!open) {
+      handleCloseDialog();
+    } else {
+      setIsDialogOpen(true);
+    }
   }
 
   function handleDeleteLesson(lessonId: number, lessonTitle: string) {
@@ -249,6 +283,14 @@ export default function CourseLessons() {
         return;
       }
       setFormData({ ...formData, file: file });
+    }
+  }
+
+  function handleBackNavigation() {
+    if (user?.role === "admin") {
+      navigate("/admin/courses");
+    } else {
+      navigate("/my-courses");
     }
   }
 
@@ -304,11 +346,7 @@ export default function CourseLessons() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/my-courses")}
-          >
+          <Button variant="ghost" size="icon" onClick={handleBackNavigation}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -321,14 +359,14 @@ export default function CourseLessons() {
           </div>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
               Add Lesson
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingLesson ? "Edit Lesson" : "Create New Lesson"}
@@ -398,6 +436,13 @@ export default function CourseLessons() {
                     {(formData.video.size / 1024 / 1024).toFixed(2)} MB)
                   </p>
                 )}
+                {editingLesson &&
+                  editingLesson.video_url &&
+                  !formData.video && (
+                    <p className="text-xs text-green-600">
+                      Current video: {editingLesson.video_url.split("/").pop()}
+                    </p>
+                  )}
               </div>
 
               <div className="grid gap-2">
@@ -427,13 +472,20 @@ export default function CourseLessons() {
                     {(formData.file.size / 1024 / 1024).toFixed(2)} MB)
                   </p>
                 )}
+                {editingLesson && editingLesson.file_url && !formData.file && (
+                  <p className="text-xs text-green-600">
+                    Current PDF: {editingLesson.file_url.split("/").pop()}
+                  </p>
+                )}
               </div>
 
-              {createMutation.error && (
+              {(createMutation.error || updateMutation.error) && (
                 <p className="text-sm text-destructive">
                   {createMutation.error instanceof Error
                     ? createMutation.error.message
-                    : "Failed to create lesson"}
+                    : updateMutation.error instanceof Error
+                    ? updateMutation.error.message
+                    : "Failed to save lesson"}
                 </p>
               )}
             </div>
@@ -495,13 +547,28 @@ export default function CourseLessons() {
                     <div className="flex-1">
                       <CardTitle className="text-lg">{lesson.title}</CardTitle>
                       {lesson.content && (
-                        <CardDescription className="mt-1">
-                          {lesson.content}
+                        <CardDescription className="mt-2 prose prose-sm max-w-none">
+                          <div className="line-clamp-3">
+                            <ReactMarkdown>
+                              {lesson.content.length > 200
+                                ? lesson.content.substring(0, 200) + "..."
+                                : lesson.content}
+                            </ReactMarkdown>
+                          </div>
                         </CardDescription>
                       )}
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    {lesson.content && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePreviewLesson(lesson)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -551,6 +618,28 @@ export default function CourseLessons() {
           ))}
         </div>
       )}
+
+      {/* Preview Dialog */}
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{previewLesson?.title}</DialogTitle>
+            <DialogDescription>Lesson content preview</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {previewLesson?.content ? (
+              <div className="prose prose-sm max-w-none">
+                <ReactMarkdown>{previewLesson.content}</ReactMarkdown>
+              </div>
+            ) : (
+              <p className="text-muted-foreground">No content available</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsPreviewOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

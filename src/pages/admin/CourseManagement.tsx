@@ -9,6 +9,7 @@ import {
   Video,
   Search,
   GraduationCap,
+  Plus,
 } from "lucide-react";
 import axios from "../../api/axios";
 import {
@@ -52,7 +53,7 @@ interface Course {
   updated_at: string;
 }
 
-interface UpdateCourseForm {
+interface CourseForm {
   title: string;
   description: string;
   thumbnail: string;
@@ -64,7 +65,12 @@ async function fetchAllCourses(): Promise<Course[]> {
   return data;
 }
 
-async function updateCourse(courseId: number, formData: UpdateCourseForm) {
+async function createCourse(formData: CourseForm) {
+  const { data } = await axios.post("/courses", formData);
+  return data;
+}
+
+async function updateCourse(courseId: number, formData: CourseForm) {
   const { data } = await axios.put(`/courses/${courseId}`, formData);
   return data;
 }
@@ -84,10 +90,19 @@ export default function CourseManagement() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  
+  // Create Dialog
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [createForm, setCreateForm] = useState<CourseForm>({
+    title: "",
+    description: "",
+    thumbnail: "",
+  });
+
+  // Edit Dialog
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-
-  const [editForm, setEditForm] = useState<UpdateCourseForm>({
+  const [editForm, setEditForm] = useState<CourseForm>({
     title: "",
     description: "",
     thumbnail: "",
@@ -103,6 +118,20 @@ export default function CourseManagement() {
     queryFn: fetchAllCourses,
   });
 
+  // Create course mutation
+  const createMutation = useMutation({
+    mutationFn: createCourse,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "courses"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "admin"] });
+      setIsCreateDialogOpen(false);
+      setCreateForm({ title: "", description: "", thumbnail: "" });
+    },
+    onError: (error: any) => {
+      alert(error.response?.data?.error || "Failed to create course");
+    },
+  });
+
   // Update course mutation
   const updateMutation = useMutation({
     mutationFn: ({
@@ -110,7 +139,7 @@ export default function CourseManagement() {
       formData,
     }: {
       courseId: number;
-      formData: UpdateCourseForm;
+      formData: CourseForm;
     }) => updateCourse(courseId, formData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "courses"] });
@@ -175,6 +204,14 @@ export default function CourseManagement() {
     published: courses.filter((c) => c.is_published).length,
     draft: courses.filter((c) => !c.is_published).length,
   };
+
+  function handleCreateCourse() {
+    if (!createForm.title || !createForm.description) {
+      alert("Please fill in all required fields");
+      return;
+    }
+    createMutation.mutate(createForm);
+  }
 
   function handleEditCourse(course: Course) {
     setEditingCourse(course);
@@ -269,6 +306,10 @@ export default function CourseManagement() {
             Manage all platform courses • {stats.total} total courses
           </p>
         </div>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Course
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -338,8 +379,14 @@ export default function CourseManagement() {
             <p className="text-muted-foreground text-center mb-6 max-w-sm">
               {searchQuery || filterStatus !== "all"
                 ? "Try adjusting your search or filter"
-                : "No courses available"}
+                : "No courses available. Create your first course!"}
             </p>
+            {!searchQuery && filterStatus === "all" && (
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Course
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -451,6 +498,84 @@ export default function CourseManagement() {
           ))}
         </div>
       )}
+
+      {/* Create Course Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create New Course</DialogTitle>
+            <DialogDescription>Add a new course to the platform</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="create-title">Course Title *</Label>
+              <Input
+                id="create-title"
+                placeholder="Enter course title"
+                value={createForm.title}
+                onChange={(e) =>
+                  setCreateForm({ ...createForm, title: e.target.value })
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="create-description">Description *</Label>
+              <Textarea
+                id="create-description"
+                placeholder="Enter course description"
+                value={createForm.description}
+                onChange={(e) =>
+                  setCreateForm({ ...createForm, description: e.target.value })
+                }
+                rows={4}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="create-thumbnail">Thumbnail URL</Label>
+              <Input
+                id="create-thumbnail"
+                placeholder="Enter image URL"
+                value={createForm.thumbnail}
+                onChange={(e) =>
+                  setCreateForm({ ...createForm, thumbnail: e.target.value })
+                }
+              />
+              {createForm.thumbnail && (
+                <div className="relative h-32 w-full rounded-md overflow-hidden bg-muted">
+                  <img
+                    src={createForm.thumbnail}
+                    alt="Preview"
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src =
+                        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225'%3E%3Crect fill='%23e5e7eb' width='400' height='225'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%239ca3af' font-size='18'%3EInvalid Image%3C/text%3E%3C/svg%3E";
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateDialogOpen(false)}
+              disabled={createMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateCourse}
+              disabled={createMutation.isPending}
+            >
+              {createMutation.isPending ? "Creating..." : "Create Course"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Course Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

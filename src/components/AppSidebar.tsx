@@ -1,5 +1,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import axios from "../api/axios";
 import {
   Sidebar,
   SidebarContent,
@@ -19,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   BookOpen,
   LayoutDashboard,
@@ -31,10 +33,33 @@ import {
   Settings,
 } from "lucide-react";
 
+interface UserProfile {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  avatar?: string;
+}
+
+async function fetchProfile(): Promise<UserProfile> {
+  const { data } = await axios.get("/users/profile");
+  return data;
+}
+
 export function AppSidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Fetch fresh profile data including avatar
+  const { data: profile } = useQuery<UserProfile, Error>({
+    queryKey: ["userProfile"],
+    queryFn: fetchProfile,
+    enabled: !!user, // Only fetch when user is logged in
+  });
+
+  // Use profile data from React Query if available, fallback to auth user
+  const displayUser = profile || user;
 
   if (!user) return null;
 
@@ -107,20 +132,30 @@ export function AppSidebar() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton>
                   <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={
+                        displayUser?.avatar
+                          ? `http://localhost:8080${displayUser.avatar}`
+                          : undefined
+                      }
+                      alt={displayUser?.name}
+                    />
                     <AvatarFallback>
-                      {user.name?.charAt(0).toUpperCase()}
+                      {displayUser?.name?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col items-start">
-                    <span className="text-sm font-medium">{user.name}</span>
+                    <span className="text-sm font-medium">
+                      {displayUser?.name}
+                    </span>
                     <span className="text-xs text-muted-foreground">
-                      {user.role}
+                      {displayUser?.role}
                     </span>
                   </div>
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="right" className="w-56">
-                <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
+                <DropdownMenuLabel>{displayUser?.name}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate("/profile")}>
                   Profile

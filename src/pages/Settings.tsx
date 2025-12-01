@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { User, Lock, Save } from "lucide-react";
 import axios from "../api/axios";
 import { useAuth } from "../hooks/useAuth";
@@ -15,12 +15,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface UserProfile {
   id: number;
   name: string;
   email: string;
   role: string;
+  avatar?: string;
 }
 
 // API response shapes (adjust if backend differs)
@@ -30,6 +32,7 @@ interface UpdateProfileResponse {
   name?: string;
   email?: string;
   role?: string;
+  avatar?: string;
   message?: string;
 }
 
@@ -42,11 +45,14 @@ async function fetchProfile(): Promise<UserProfile> {
   return data;
 }
 
-async function updateProfile(data: {
-  name: string;
-  email: string;
-}): Promise<UpdateProfileResponse> {
-  const { data: res } = await axios.put("/users/profile", data);
+async function updateProfile(
+  formData: FormData
+): Promise<UpdateProfileResponse> {
+  const { data: res } = await axios.put("/users/profile", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
   return res;
 }
 
@@ -60,7 +66,10 @@ async function changePassword(data: {
 
 export default function Settings() {
   const { setUser } = useAuth();
+  const queryClient = useQueryClient();
   const [profileForm, setProfileForm] = useState({ name: "", email: "" });
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [passwordForm, setPasswordForm] = useState({
     old_password: "",
     new_password: "",
@@ -82,28 +91,34 @@ export default function Settings() {
     }
   }, [profile]);
 
-  const profileMutation = useMutation<
-    UpdateProfileResponse,
-    Error,
-    { name: string; email: string }
-  >({
+  const profileMutation = useMutation<UpdateProfileResponse, Error, FormData>({
     mutationFn: updateProfile,
     onSuccess: (data) => {
+      console.log("Profile update response:", data);
+
       // Support both wrapped and raw user payloads
       const updated =
         data.user ??
         (data.id
           ? ({
-              id: data.id,
+              id: String(data.id),
               name: data.name || profileForm.name,
               email: data.email || profileForm.email,
               role: data.role || "",
-            } as UserProfile)
+              avatar: data.avatar,
+            } as any)
           : undefined);
+
       if (updated) {
-        setUser(updated as any); // context expects User shape
+        setUser(updated);
       }
+
+      // Invalidate queries to refetch fresh data
+      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
+
       setProfileSuccess(data.message || "Profile updated successfully!");
+      setAvatarFile(null);
+      setAvatarPreview(null);
       setTimeout(() => setProfileSuccess(""), 3000);
     },
   });
@@ -130,7 +145,35 @@ export default function Settings() {
       alert("Please fill in all fields");
       return;
     }
-    profileMutation.mutate(profileForm);
+
+    const formData = new FormData();
+    formData.append("name", profileForm.name);
+    formData.append("email", profileForm.email);
+    if (avatarFile) {
+      formData.append("avatar", avatarFile);
+    }
+
+    profileMutation.mutate(formData);
+  }
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Avatar must be less than 5MB");
+        return;
+      }
+      if (!file.type.startsWith("image/")) {
+        alert("Please select an image file");
+        return;
+      }
+      setAvatarFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   }
 
   function handlePasswordChange() {
@@ -212,6 +255,59 @@ export default function Settings() {
                   <AlertDescription>{profileSuccess}</AlertDescription>
                 </Alert>
               )}
+
+              <div className="space-y-4">
+                <Label>Profile Avatar</Label>
+                <div className="flex items-center gap-6">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage
+                      src={
+                        avatarPreview ||
+                        (profile?.avatar
+                          ? `http://localhost:8080${profile.avatar}`
+                          : undefined)
+                      }
+                      alt={profile?.name}
+                    />
+                    <AvatarFallback className="text-2xl">
+                      {profile?.name?.charAt(0).toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="avatar"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                        className="cursor-pointer"
+                      />
+                      {avatarFile && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setAvatarFile(null);
+                            setAvatarPreview(null);
+                          }}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Upload a profile picture (max 5MB)
+                    </p>
+                    {avatarFile && (
+                      <p className="text-xs text-muted-foreground">
+                        Selected: {avatarFile.name} (
+                        {(avatarFile.size / 1024 / 1024).toFixed(2)} MB)
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
